@@ -67,7 +67,9 @@ def pigs_cmd(*args):
     try:
         result = subprocess.run(['pigs'] + list(map(str, args)), 
                               capture_output=True, text=True, check=True)
-        return result.stdout.strip()
+        outVal = result.stdout.strip()
+        # logger.debug(f"pigs command output: {' '.join(map(str, args))} -> {outVal}")
+        return outVal
     except subprocess.CalledProcessError as e:
         logger.error(f"pigs command failed: {' '.join(map(str, args))}, error: {e.stderr}")
         return None
@@ -123,8 +125,8 @@ def init_gpio():
     # Set endstop pins as inputs with pull-up
     gpio_mode(TOP_ENDSTOP_PIN, 'r')
     gpio_mode(BOTTOM_ENDSTOP_PIN, 'r')
-    pigs_cmd('pud', TOP_ENDSTOP_PIN, 'u')     # Set pull-up
-    pigs_cmd('pud', BOTTOM_ENDSTOP_PIN, 'u')  # Set pull-up
+    pigs_cmd('pud', TOP_ENDSTOP_PIN, 'd')     # Set pull-up
+    pigs_cmd('pud', BOTTOM_ENDSTOP_PIN, 'd')  # Set pull-up
     
     # Set UV light pin as output
     gpio_mode(UV_LIGHT_PIN, 'w')
@@ -243,7 +245,7 @@ def execute_gcode(gcode_line, default_speed=500):
         z_pos = params['Z']
     else:
         z_pos = None
-    
+
     if command in ['G0', 'G1']:  # Linear move (rapid or controlled)
         if z_pos is not None:
             
@@ -258,7 +260,9 @@ def execute_gcode(gcode_line, default_speed=500):
             logger.info(f"Moving Z-axis: {z_mm}mm ({z_steps} steps) in direction '{direction}' at speed {speed}us")
             
             # Execute movement with endstop protection
-            steps_moved = move_motor(direction, z_steps, int(speed), use_endstops=True, disable_at_end=False)
+            use_endstops=True if command == 'G0' else False  # Use endstops for rapid moves (G0), not for controlled moves (G1)
+
+            steps_moved = move_motor(direction, z_steps, int(speed), use_endstops=use_endstops, disable_at_end=False)
             write_status(f"MOVE_COMPLETE:{direction}:{z_mm}mm:{steps_moved}steps")
             
             success = True
@@ -419,7 +423,8 @@ def move_motor(direction, steps, speed, use_endstops, disable_at_end=False):
     # Enable motor (active low)
     gpio_write(MOTOR_EN_PIN, 0)
 
-    proc_command = f"proc tag 123 w {MOTOR_STP_PIN} 1 mics {speed} w {MOTOR_STP_PIN} 0 mics {speed} r {endstop} jnz 321 dcr p0 jnz 123 tag 321"
+    end_stop_command=f"r {endstop} jnz 321 " if use_endstops else ""
+    proc_command = f"proc tag 123 w {MOTOR_STP_PIN} 1 mics {speed} w {MOTOR_STP_PIN} 0 mics {speed} {end_stop_command} dcr p0 jnz 123 tag 321"
     proc_id = pigs_cmd(proc_command)
     pigs_cmd('procr', proc_id, steps)  # Run procedure
 
@@ -667,11 +672,11 @@ if __name__ == "__main__":
                 logger.info(f"Removed named pipe: {args.pipe_path}")
             
             # Close status pipe
-            if status_pipe:
-                status_pipe.close()
+            # if status_pipe:
+            #     status_pipe.close()
     else:
         parser.print_help()
     
     # Final cleanup - close status pipe if still open
-    if status_pipe:
-        status_pipe.close()
+    # if status_pipe:
+    #     status_pipe.close()
