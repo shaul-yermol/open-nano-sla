@@ -68,7 +68,7 @@ def pigs_cmd(*args):
         result = subprocess.run(['pigs'] + list(map(str, args)), 
                               capture_output=True, text=True, check=True)
         outVal = result.stdout.strip()
-        # logger.debug(f"pigs command output: {' '.join(map(str, args))} -> {outVal}")
+        logger.debug(f"pigs command output: {' '.join(map(str, args))} -> {outVal}")
         return outVal
     except subprocess.CalledProcessError as e:
         logger.error(f"pigs command failed: {' '.join(map(str, args))}, error: {e.stderr}")
@@ -109,8 +109,9 @@ directions = ["u", "d"]
 
 #define physical parameters
 revolution_mm = 2.0                         # 2mm per revolution
-microstepping = 1.0                         # 1/1
+microstepping = 32.0                         # 1/32 microstepping
 full_steps_per_rev = 200.0 * microstepping  # Full steps per revolution for the stepper motor
+default_speed = 2000                        # Default speed in microseconds between steps (adjust as needed)
 
 # Initialize GPIO pins using pigs
 def init_gpio():
@@ -220,7 +221,7 @@ def parse_gcode(gcode_line):
     
     return command, params
 
-def execute_gcode(gcode_line, default_speed=500):
+def execute_gcode(gcode_line, default_speed=default_speed):
     """Execute a G-code command"""
     command, params = parse_gcode(gcode_line)
     
@@ -368,7 +369,7 @@ def check_endstops():
     logger.info(f"Bottom endstop (GPIO{BOTTOM_ENDSTOP_PIN}): {bottom_state}")
     return top_triggered(), bottom_triggered()
 
-def home_motor(speed=500, direction="d"):
+def home_motor(speed=default_speed, direction="d"):
 
     disable_at_end = True
 
@@ -424,7 +425,7 @@ def move_motor(direction, steps, speed, use_endstops, disable_at_end=False):
     gpio_write(MOTOR_EN_PIN, 0)
 
     end_stop_command=f"r {endstop} jnz 321 " if use_endstops else ""
-    proc_command = f"proc tag 123 w {MOTOR_STP_PIN} 1 mics {speed} w {MOTOR_STP_PIN} 0 mics {speed} {end_stop_command} dcr p0 jnz 123 tag 321"
+    proc_command = f"proc tag 123 w {MOTOR_STP_PIN} 1 mics {round(speed/microstepping)} w {MOTOR_STP_PIN} 0 mics {round(speed/microstepping)} {end_stop_command} dcr p0 jnz 123 tag 321"
     proc_id = pigs_cmd(proc_command)
     pigs_cmd('procr', proc_id, steps)  # Run procedure
 
@@ -526,7 +527,7 @@ def read_gcode_from_pipe(pipe_path="/tmp/mcin"):
     
     logger.info("G-code pipe reader stopped.")
 
-def process_gcode_queue(default_speed=500):
+def process_gcode_queue(default_speed=default_speed):
     """Process G-code commands from the queue"""
     logger.info("Starting G-code queue processor...")
     
@@ -570,7 +571,7 @@ def get_queue_status():
         'threads_stopped': g_stop_threads.is_set()
     }
 
-def execute_gcode_from_pipe_with_queue(pipe_path="/tmp/mcin", default_speed=500):
+def execute_gcode_from_pipe_with_queue(pipe_path="/tmp/mcin", default_speed=default_speed):
     """Start both pipe reader and queue processor threads"""
     logger.info("Starting G-code service with queue...")
     logger.info("Send G-code commands to the pipe using: echo 'G1 Z10' > /tmp/mcin")
@@ -616,7 +617,7 @@ def execute_gcode_from_pipe_with_queue(pipe_path="/tmp/mcin", default_speed=500)
 if __name__ == "__main__":
     # parser for command line arguments
     parser = argparse.ArgumentParser(description="Motor Controller with Endstop Support")
-    parser.add_argument("-t", "--time", type=int, default=500, help="Delay between steps (in microseconds)")
+    parser.add_argument("-t", "--time", type=int, default=default_speed, help="Delay between steps (in microseconds)")
     parser.add_argument("--check", action="store_true", help="Check endstop status")
     parser.add_argument("--home", action="store_true", help="Home motor to bottom endstop")
     parser.add_argument("--unhome", action="store_true", help="Unhome motor by moving up a bit")
