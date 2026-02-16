@@ -1,0 +1,121 @@
+# For more options and information see
+# http://rpf.io/configtxt
+# Some settings may impact device functionality. See link above for details
+
+# uncomment if you get no picture on HDMI for a default "safe" mode
+# hdmi_safe=1
+
+# uncomment this if your display has a black border of unused pixels visible
+# and your display can output without overscan
+#disable_overscan=1
+
+# uncomment the following to adjust overscan. Use positive numbers if console
+# goes off screen, and negative if there is too much border
+#overscan_left=16
+#overscan_right=16
+#overscan_top=16
+#overscan_bottom=16
+
+# uncomment to force a console size. By default it will be display's size minus
+# overscan.
+#framebuffer_width=1280
+#framebuffer_height=720
+
+# uncomment if hdmi display is not detected and composite is being output
+#hdmi_force_hotplug=1
+
+# uncomment to force a specific HDMI mode (this will force VGA)
+#hdmi_group=1
+#hdmi_mode=1
+
+# uncomment to force a HDMI mode rather than DVI. This can make audio work in
+# DMT (computer monitor) modes
+#hdmi_drive=2
+
+# uncomment to increase signal to HDMI, if you have interference, blanking, or
+# no display
+#config_hdmi_boost=4
+
+# uncomment for composite PAL
+#sdtv_mode=2
+
+#uncomment to overclock the arm. 700 MHz is the default.
+#arm_freq=800
+
+# Uncomment some or all of these to enable the optional hardware interfaces
+#dtparam=i2c_arm=on
+#dtparam=i2s=on
+#dtparam=spi=on
+
+# Uncomment this to enable the lirc-rpi module
+#dtoverlay=lirc-rpi
+
+# Additional overlays and parameters are documented /boot/overlays/README
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+disable_splash=1
+boot_delay=0
+dtoverlay=pi3-disable-bt
+
+[pi4]
+# Enable DRM VC4 V3D driver on top of the dispmanx display stack
+dtoverlay=vc4-fkms-v3d
+max_framebuffers=2
+
+[all]
+#dtoverlay=vc4-fkms-v3d
+disable_camera_led=1
+
+hdmi_pixel_encoding=2
+start_x=0
+gpu_mem=128
+enable_uart=1
+
+
+hdmi_drive=2
+
+# tells the Pi to output a signal even if an HDMI display is not detected.
+hdmi_force_hotplug:1=1
+
+# Limit freq to 300Mhz
+hdmi_pixel_freq_limit:1=300000000
+
+# Set HDMI to DMT mode 87 (custom mode)
+hdmi_group:1=2
+hdmi_mode:1=87
+
+# To disable the black border around the screen, use:
+disable_overscan:1=1
+config_hdmi_boost:1=4
+
+# hdmi_timings:1=540 0 35 14 35 2400 0 62 6 28 0 0 0 50 0 170000000 0 
+framebuffer_width:1=540
+framebuffer_height:1=2560
+# display_rotate=3
+max_framebuffer_width:1=2560
+max_framebuffer_height:1=2560
+
+framebuffer_ignore_alpha=1
+framebuffer_depth=24
+
+hdmi_cvt=540 2560 50
+
+# TODO: Check this
+# hvs_priority=0x32ff
+
+
+# force_trubo=1
+# gpu_freq=300
+# core_freq=400
+
+display_rotate=0x10000
+dtparam=audio=off
+
+# guessing the format to be 540x2560p @50 Hz
+# 540x2560p hfp:76 hs:10 hbp:56 vfp:50 vs:2 vbp:20 pixel clock:89 MHz
+# hdmi_timings:1=540 0 76 10 56 2560 0 50 2 20 0 0 0 50 0 89000000 0 
+
+# hdmi_timings=[h_active_pixels] [h_sync_polarity] [h_front_porch] [h_sync_pulse] [h_back_porch] [v_active_lines] [v_sync_polarity] [v_front_porch] [v_sync_pulse] [v_back_porch] [v_sync_offset_a] [v_sync_offset_b] [pixel_rep] [frame_rate] [interlaced] [pixel_freq] [aspect_ratio]
+# hdmi_timings:1=540 0 76 10 56 2560 0 50 2 20 0 0 0 50 0 89000000 0
