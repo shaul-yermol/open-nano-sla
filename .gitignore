@@ -1,4 +1,7 @@
 __pycache__/**
 test_prints/**
 SLA/**
+cad/stl/**
 remote/**
+**.gcode
+**.FCBak
