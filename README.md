@@ -313,3 +313,9 @@ QUEUED:<gcode_command>   # Command added to queue
 > pigs procr 1
 > pigs proc wait 0x2002000 w 24 1
 > pigs proc 2
+
+
+### UI dependencies:
+
+https://github.com/adafruit/Adafruit_CircuitPython_RGB_Display.git
+https://github.com/ilbertt/XPT2046-Python/blob/main/xpt2046.py

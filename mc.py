@@ -104,8 +104,6 @@ BOTTOM_ENDSTOP_PIN = 13
 #Define GPIO pins for UV light control (BCM numbering)
 UV_LIGHT_PIN = 26
 
-EMERGENCY_STOP_PIN = 27
-
 # Define directions
 directions = ["u", "d"]
 

@@ -13,15 +13,19 @@ import logging.handlers
 import select
 import signal
 
-pipe_path = '/tmp/mcin'
-status_pipe = '/tmp/mcout'
+mc_control_pipe = '/tmp/mcin'
+mc_status_pipe = '/tmp/mcout'
+
+ui_control_pipe = '/tmp/uiin'
+ui_status_pipe = '/tmp/uiout'
+
 
 raise_Z_amount = 10
 
 # Configure logging with syslog
 def setup_logging(log_level='INFO', use_syslog=True):
     """Setup logging configuration with syslog support"""
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    numeric_level = getattr(logging, log_level.upper(), logging.DEBUG)
     
     # Get root logger and set level
     root_logger = logging.getLogger()
@@ -100,12 +104,12 @@ def signal_handler(signum, frame):
 def send_gcode(command, timeout=60):
 	"""Send G-code command to mc.py and wait for response"""
 	logger.debug(f"Sending G-code command: {command}")
-	with open(pipe_path, 'w') as pipe:
+	with open(mc_control_pipe, 'w') as pipe:
 		pipe.write(command + '\n')
 	start = time.time()
 	while time.time() - start < timeout:
 		try:
-			with open(status_pipe, 'r') as status:
+			with open(mc_status_pipe, 'r') as status:
 				logger.debug("Opened status pipe for reading")
 				logger.debug("Waiting for response from mc.py...")
 				rlist,wlist,xlist = select.select([status], [], [], 1)
@@ -125,6 +129,38 @@ def send_gcode(command, timeout=60):
 			logger.debug("Exception reading status pipe: " + str(e))
 			time.sleep(1)
 			continue
+	return False
+
+def send_ui(command, timeout=1):
+	"""Send a command to display.py via UI pipe.
+
+	Uses the same protocol as send_gcode but with a short timeout
+	since the UI is non-critical.  Returns True on OK, False otherwise.
+	Failures are logged but never abort the print.
+	"""
+	try:
+		logger.debug(f"Sending UI command: {command}")
+		with open(ui_control_pipe, 'w') as pipe:
+			pipe.write(command + '\n')
+		start = time.time()
+		while time.time() - start < timeout:
+			try:
+				with open(ui_status_pipe, 'r') as status:
+					rlist, _, _ = select.select([status], [], [], 0.5)
+					if not rlist:
+						continue
+					while line := status.readline():
+						logger.debug(f"Received from UI: {line.strip()}")
+						if 'OK' in line:
+							return True
+						if 'ERROR' in line:
+							return False
+					continue
+			except Exception as e:
+				logger.debug(f"Exception reading UI status pipe: {e}")
+				break
+	except Exception as e:
+		logger.debug(f"Failed to send UI command: {e}")
 	return False
 
 def get_png_dimensions(image_path):
@@ -338,22 +374,18 @@ def main(args):
 	# 	os.abort()
 	
 	for i, image_path in enumerate(processed_files):
+
 		logger.info(f"Printing layer {i}/{len(processed_files)}: {os.path.basename(image_path)}")
-		# Raise Z by raise_Z_amount
-		# if not send_gcode('G1 Z' + str(raise_Z_amount)):
-		# 	logger.error('Failed to raise Z')
-		# 	os.abort()
-		# # Lower Z by (raise_Z_amount - layer_height)
-		# down_dist = raise_Z_amount - layer_height
-		# if not send_gcode(f'G1 Z-{down_dist}'):
-		# 	logger.error('Failed to lower Z')
-		# 	os.abort()
+
+		# Update UI with current layer progress
+		send_ui(f"LAYER {i} {len(processed_files)}")
+
 		# Show image on HDMI
 		if not dry_run:
 			
 			show_image(image_path)
-			# Sleep 0.5s to ensure image is fully displayed
-			time.sleep(0.5)
+			# Sleep 1.5s to ensure image is fully displayed
+			time.sleep(1.5)
 			# UV ON
 			if not send_gcode('M3'):
 				logger.error('Failed to turn UV ON')
@@ -368,17 +400,18 @@ def main(args):
 				os.abort()
 		# Sleep 0.5s to ensure UV is fully off
 		time.sleep(0.5)
-		# # Raise Z by 2mm
+
 		if not send_gcode(f'G1 Z{raise_Z_amount}'):
 			logger.error('Failed to raise Z')
 			os.abort()
-		# Lower Z by (raise_Z_amount - layer_height)
 		down_dist = raise_Z_amount - layer_height
 		if not send_gcode(f'G1 Z-{down_dist}'):
 			logger.error('Failed to lower Z')
 			os.abort()
+
 	# Disable motor
 	send_gcode('M18')
+	send_ui(f"DONE {len(processed_files)}")
 	logger.info('Print sequence complete.')
 
 if __name__ == '__main__':
@@ -396,6 +429,8 @@ if __name__ == '__main__':
 	                    help="Only preprocess images without printing", default=False)
 	parser.add_argument("--dry-run", action="store_true",
 	                    help="Perform a dry run without UV and with minimal exposure time", default=False)
+	parser.add_argument("--daemonize", action="store_true",
+	                    help="Run as a daemon in the background", default=False)
 	args = parser.parse_args()
 	
 	# Setup logging with specified level (use syslog by default)
@@ -404,8 +439,8 @@ if __name__ == '__main__':
 	
 	# Register signal handlers for graceful shutdown
 	signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
-	signal.signal(signal.SIGTERM, signal_handler)  # Kill command
-	signal.signal(signal.SIGABRT, signal_handler)  # Abort signal
+	signal.signal(signal.SIGTERM, signal_handler)  # Termination signal
+	signal.signal(signal.SIGABRT, signal_handler)   # Abort signal
 	
 	logger.info("=" * 50)
 	logger.info("3D Print Sequence Starting")

@@ -1,0 +1,17 @@
+[program:print]
+priority=100
+command=/home/shaul/.python/rgb-display/bin/python3 print.py --use-console --log-level=DEBUG --dry-run `cat /tmp/print-filename.txt`
+directory=/home/shaul/open-nano-dlp
+autostart=false
+autorestart=false
+exitcodes=3
+stopsignal=INT
+user=shaul
+stderr_logfile=/var/log/supervisor/print.err.log
+stderr_logfile_maxbytes=30MB
+stderr_logfile_backups=4
+stdout_logfile=/var/log/supervisor/print.out.log
+stdout_logfile_maxbytes=30MB
+stdout_logfile_backups=4
+# See sygsegv.cpp. The signal handler prints to stderr, so we need to log stderr to syslog.
+stderr_syslog=true
