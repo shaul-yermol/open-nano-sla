@@ -41,7 +41,7 @@ def setup_logging(log_level='DEBUG', use_syslog=True):
             syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
             # Set format for syslog (no timestamp needed, syslog adds it)
             syslog_formatter = logging.Formatter(
-                fmt='mc.py[%(process)d]: %(name)s - %(levelname)s - %(message)s'
+                fmt='display.py[%(process)d]: %(name)s - %(levelname)s - %(message)s'
             )
             syslog_handler.setFormatter(syslog_formatter)
             root_logger.addHandler(syslog_handler)
@@ -337,9 +337,8 @@ def _handle_ui_command(line: str):
         logging.info(f"UI: layer {current}/{total}")
         printing_screen.set_progress(current_layer=current, total_layers=total)
         # Refresh screen if printing screen is active
-        if current_screen.name == "printing":
-            printing_screen.draw(draw, image)
-            disp.image(image, rotation)
+        printing_screen.draw(draw, image)
+        disp.image(image, rotation)
         _ui_respond("OK")
 
     elif cmd == "DONE":
@@ -347,9 +346,8 @@ def _handle_ui_command(line: str):
         printing_screen.set_progress(
             current_layer=printing_screen.total_layers,
             status="DONE")
-        if current_screen.name == "printing":
-            printing_screen.draw(draw, image)
-            disp.image(image, rotation)
+        printing_screen.draw(draw, image)
+        disp.image(image, rotation)
         _ui_respond("OK")
 
     else:
