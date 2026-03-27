@@ -588,6 +588,7 @@ class PrintingScreen(Screen):
         y += vlh
 
         canvas.text((left, y), "Est. total:", font=font, fill=(160, 160, 160))
+        self.estimated_total = int(self.total_layers * elapsed / self.current_layer) if self.current_layer > 0 else 0
         est_str = _fmt_time(self.estimated_total) if self.estimated_total else "--:--:--"
         canvas.text((left + 95, y), est_str, font=val_font,
                     fill=(255, 255, 255))
